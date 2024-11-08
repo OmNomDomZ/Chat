@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    build: ./docker
+    container_name: chat_db
+    environment:
+      POSTGRES_DB: chat_db
+      POSTGRES_USER: chat_user
+      POSTGRES_PASSWORD: chat_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/init_db:/docker-entrypoint-initdb.d
+
+volumes:
+  db_data:
