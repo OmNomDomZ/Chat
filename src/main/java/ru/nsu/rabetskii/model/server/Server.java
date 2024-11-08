@@ -2,7 +2,6 @@ package ru.nsu.rabetskii.model.server;
 
 import ru.nsu.rabetskii.model.xmlmessage.Event;
 
-
 import javax.xml.bind.JAXBException;
 import java.io.*;
 import java.net.ServerSocket;
@@ -18,8 +17,6 @@ public class Server {
     public static Set<String> activeUsers = new HashSet<>();
     public static List<Event> messageHistory = new LinkedList<>();
     public static boolean log;
-
-//    192.168.31.192
 
     public static void main(String[] args) {
         if (args.length < 1) {

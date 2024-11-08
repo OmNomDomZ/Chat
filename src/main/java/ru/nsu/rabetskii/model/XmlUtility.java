@@ -28,7 +28,6 @@ public class XmlUtility {
     public String marshalToXml(Object obj) throws JAXBException {
         synchronized (marshaller) {
             StringWriter writer = new StringWriter();
-//            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
             marshaller.marshal(obj, writer);
             return writer.toString();
         }
