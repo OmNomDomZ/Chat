@@ -6,8 +6,8 @@ import ru.nsu.rabetskii.patternobserver.Observer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChatModel implements Observable {
-    private List<Observer> observers = new ArrayList<>();
+public class ChatObservable implements Observable {
+    private final List<Observer> observers = new ArrayList<>();
 
     @Override
     public void addObserver(Observer observer) {
@@ -21,7 +21,7 @@ public class ChatModel implements Observable {
         }
     }
 
-    public void receiveMessage(String message) {
+    public void sendMessage(String message) {
         notifyObservers(message);
     }
 }

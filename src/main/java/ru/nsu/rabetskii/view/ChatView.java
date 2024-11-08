@@ -1,13 +1,11 @@
 package ru.nsu.rabetskii.view;
 
-import ru.nsu.rabetskii.model.ChatModel;
+import ru.nsu.rabetskii.model.ChatObservable;
 import ru.nsu.rabetskii.patternobserver.Observer;
 import ru.nsu.rabetskii.model.client.ClientHandler;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
@@ -15,36 +13,58 @@ public class ChatView implements Observer {
     private JFrame frame;
     private JTextArea textArea;
     private JTextField textField;
-    private JButton sendButton;
-    private JButton listButton;
-    private ChatModel chatModel;
-    private String nickname;
-    private ClientHandler clientHandler;
+    private final String nickname;
+    private final ClientHandler clientHandler;
 
-    public ChatView(ChatModel chatModel, String nickname, ClientHandler clientHandler) {
-        this.chatModel = chatModel;
+    public ChatView(ChatObservable chatObservable, String nickname, ClientHandler clientHandler) {
         this.nickname = nickname;
         this.clientHandler = clientHandler;
-        chatModel.addObserver(this);
+        chatObservable.addObserver(this);
         createAndShowGUI();
     }
 
     private void createAndShowGUI() {
-        frame = new JFrame("Chat");
+        frame = new JFrame(nickname);
         frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        frame.setSize(400, 300);
+        frame.setSize(600, 400);
+        frame.setLocationRelativeTo(null);
 
         textArea = new JTextArea();
         textArea.setEditable(false);
+        textArea.setBackground(new Color(60, 60, 60));
+        textArea.setForeground(Color.WHITE);
+        textArea.setCaretColor(Color.WHITE);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
         JScrollPane scrollPane = new JScrollPane(textArea);
 
         textField = new JTextField(25);
-        sendButton = new JButton("Send");
-        listButton = new JButton("List");
+        textField.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        textField.setOpaque(true);
+        textField.setBackground(new Color(70, 70, 70));
+        textField.setForeground(Color.WHITE);
+        textField.setCaretColor(Color.WHITE);
+        textField.setFont(new Font("Arial", Font.PLAIN, 14));
+
+        JButton sendButton = new JButton("Send");
+        sendButton.setFocusPainted(false);
+        sendButton.setBackground(new Color(70, 130, 180));
+        sendButton.setForeground(Color.WHITE);
+        sendButton.setFont(new Font("Arial", Font.BOLD, 14));
+        sendButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        JButton listButton = new JButton("List");
+        listButton.setFocusPainted(false);
+        listButton.setBackground(new Color(100, 100, 180));
+        listButton.setForeground(Color.WHITE);
+        listButton.setFont(new Font("Arial", Font.BOLD, 14));
+        listButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
         JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(45, 45, 45));
+
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.LINE_AXIS));
+        inputPanel.setBackground(new Color(45, 45, 45));
         inputPanel.add(textField);
         inputPanel.add(sendButton);
         inputPanel.add(listButton);

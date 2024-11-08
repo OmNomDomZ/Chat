@@ -1,6 +1,6 @@
 package ru.nsu.rabetskii.model.client;
 
-import ru.nsu.rabetskii.model.ChatModel;
+import ru.nsu.rabetskii.model.ChatObservable;
 import ru.nsu.rabetskii.model.XmlUtility;
 import ru.nsu.rabetskii.model.xmlmessage.Command;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
@@ -13,18 +13,17 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 public class ClientHandler {
-
     private final Socket socket;
     private final DataInputStream in;
     private final DataOutputStream out;
     private final String nickname;
     private boolean isLoggedIn = false;
     private final XmlUtility xmlUtility;
-    private final ChatModel chatModel;
+    private final ChatObservable chatObservable;
 
-    public ClientHandler(String addr, int port, ChatModel chatModel, String nickname, String password) throws IOException, JAXBException {
+    public ClientHandler(String addr, int port, ChatObservable chatObservable, String nickname, String password) throws IOException, JAXBException {
         this.socket = new Socket(addr, port);
-        this.chatModel = chatModel;
+        this.chatObservable = chatObservable;
         this.nickname = nickname;
         this.xmlUtility = new XmlUtility(Command.class, Event.class, Success.class, Error.class);
         in = new DataInputStream(socket.getInputStream());
@@ -49,7 +48,7 @@ public class ClientHandler {
 
             int length = in.readInt();
             if (length <= 0) {
-                chatModel.receiveMessage("Error: invalid response from server");
+                chatObservable.sendMessage("Error: invalid response from server");
                 return;
             }
             byte[] buffer = new byte[length];
@@ -58,14 +57,14 @@ public class ClientHandler {
 
             if (xmlMessage.contains("success")) {
                 isLoggedIn = true;
-                chatModel.receiveMessage("Login successful!");
+                chatObservable.sendMessage("Login successful!");
             } else if (xmlMessage.contains("error")) {
                 Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                chatModel.receiveMessage("Login failed: " + error.getMessage());
+                chatObservable.sendMessage("Login failed: " + error.getMessage());
                 isLoggedIn = false;
             }
         } catch (IOException | JAXBException e) {
-            chatModel.receiveMessage("Login failed: " + e.getMessage());
+            chatObservable.sendMessage("Login failed: " + e.getMessage());
             isLoggedIn = false;
         }
     }
@@ -83,7 +82,7 @@ public class ClientHandler {
             Command messageCommand = new Command("message", nickname, message);
             sendXmlMessage(messageCommand);
         } catch (IOException | JAXBException e) {
-            chatModel.receiveMessage("Failed to send message: " + e.getMessage());
+            chatObservable.sendMessage("Failed to send message: " + e.getMessage());
         }
     }
 
@@ -94,7 +93,7 @@ public class ClientHandler {
 
             int length = in.readInt();
             if (length <= 0) {
-                chatModel.receiveMessage("Error: invalid response from server");
+                chatObservable.sendMessage("Error: invalid response from server");
                 return;
             }
             byte[] buffer = new byte[length];
@@ -102,13 +101,13 @@ public class ClientHandler {
             String xmlMessage = new String(buffer, StandardCharsets.UTF_8);
 
             if (xmlMessage.contains("success")) {
-                chatModel.receiveMessage("Logout successful!");
+                chatObservable.sendMessage("Logout successful!");
             } else if (xmlMessage.contains("error")) {
                 Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                chatModel.receiveMessage("Logout failed: " + error.getMessage());
+                chatObservable.sendMessage("Logout failed: " + error.getMessage());
             }
         } catch (IOException | JAXBException e) {
-            chatModel.receiveMessage("Failed to logout: " + e.getMessage());
+            chatObservable.sendMessage("Failed to logout: " + e.getMessage());
         } finally {
             downService();
         }
@@ -119,7 +118,7 @@ public class ClientHandler {
             Command listCommand = new Command("list", nickname);
             sendXmlMessage(listCommand);
         } catch (IOException | JAXBException e) {
-            chatModel.receiveMessage("Failed to request user list: " + e.getMessage());
+            chatObservable.sendMessage("Failed to request user list: " + e.getMessage());
         }
     }
 
@@ -131,7 +130,7 @@ public class ClientHandler {
                 socket.close();
             }
         } catch (IOException e) {
-            chatModel.receiveMessage("Failed to close connection: " + e.getMessage());
+            chatObservable.sendMessage("Failed to close connection: " + e.getMessage());
         }
     }
 
@@ -141,7 +140,6 @@ public class ClientHandler {
             try {
                 while (!socket.isClosed()) {
                     int length;
-
                     length = in.readInt();
 
                     if (length <= 0) continue;
@@ -157,7 +155,7 @@ public class ClientHandler {
                         handleSuccess(success);
                     } else if (xmlMessage.contains("error")) {
                         Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                        chatModel.receiveMessage("Error: " + error.getMessage());
+                        chatObservable.sendMessage("Error: " + error.getMessage());
                     }
                 }
             } catch (IOException | JAXBException e) {
@@ -167,11 +165,11 @@ public class ClientHandler {
 
         private void handleEvent(Event event) {
             if ("userlogin".equals(event.getEvent())) {
-                chatModel.receiveMessage(event.getUserName() + " joined the chat");
+                chatObservable.sendMessage(event.getUserName() + " joined the chat");
             } else if ("userlogout".equals(event.getEvent()) && !event.getUserName().equals(nickname)) {
-                chatModel.receiveMessage(event.getUserName() + " left the chat");
+                chatObservable.sendMessage(event.getUserName() + " left the chat");
             } else if ("message".equals(event.getEvent())) {
-                chatModel.receiveMessage(event.getFrom() + ": " + event.getMessage());
+                chatObservable.sendMessage(event.getFrom() + ": " + event.getMessage());
             }
         }
 
@@ -181,18 +179,7 @@ public class ClientHandler {
                 for (Success.User user : success.getUsers().getUsers()) {
                     userListMessage.append(user.getName()).append("\n");
                 }
-                chatModel.receiveMessage(userListMessage.toString());
-            }
-        }
-
-        private void handleClientDisconnect() {
-            try {
-                Command logoutCommand = new Command("logout", nickname);
-                sendXmlMessage(logoutCommand);
-            } catch (IOException | JAXBException e) {
-                chatModel.receiveMessage("Failed to notify server about disconnection: " + e.getMessage());
-            } finally {
-                downService();
+                chatObservable.sendMessage(userListMessage.toString());
             }
         }
     }
