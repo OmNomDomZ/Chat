@@ -116,6 +116,7 @@ public class ChatView implements Observer {
         StyleConstants.setForeground(style, color);
         try {
             doc.insertString(doc.getLength(), text, style);
+            textPane.setCaretPosition(doc.getLength());
         } catch (BadLocationException e) {
             e.printStackTrace();
         }
