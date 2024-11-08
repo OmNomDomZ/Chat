@@ -1,7 +1,5 @@
 package ru.nsu.rabetskii.database;
 
-import org.w3c.dom.ls.LSOutput;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,17 +14,21 @@ public class Database {
     public void Connect() {
         try{
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            String sql = "TRUNCATE TABLE chat_messages RESTART IDENTITY;";
+            PreparedStatement preparedStatement = connection.prepareStatement(sql);
+            preparedStatement.execute();
             System.out.println("Connection to database established.");
         } catch (SQLException e) {
             throw new RuntimeException("Failed to connect to the database: " + e.getMessage(), e);
         }
     }
 
-    public void AddMessage(String username, String message) {
-        String sql = "INSERT INTO chat_messages (username, message) VALUES (?, ?)";
+    public void AddMessage(String event, String username, String message) {
+        String sql = "INSERT INTO chat_messages (event, username, message) VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, username);
-            preparedStatement.setString(2, message);
+            preparedStatement.setString(1, event);
+            preparedStatement.setString(2, username);
+            preparedStatement.setString(3, message);
             preparedStatement.executeUpdate();
             System.out.println("Message successfully added to the database.");
         } catch (SQLException e) {
@@ -36,14 +38,20 @@ public class Database {
 
     public List<String> getRecentMessages() {
         List<String> messages = new ArrayList<>();
-        String sql = "SELECT username, message FROM chat_messages ORDER BY created_at DESC LIMIT 10";
+        List<String> temp = new ArrayList<>();
+        String sql = "SELECT event, username, message FROM chat_messages ORDER BY created_at DESC LIMIT 10";
 
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql);
              ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
+                String event = resultSet.getString("event");
                 String username = resultSet.getString("username");
                 String message = resultSet.getString("message");
-                messages.add(username + message);
+                temp.add(event + ' ' + username + ' ' + message);
+            }
+
+            for (int i = temp.size() - 1; i >= 0; i--) {
+                messages.add(temp.get(i));
             }
         } catch (SQLException e) {
             e.printStackTrace();

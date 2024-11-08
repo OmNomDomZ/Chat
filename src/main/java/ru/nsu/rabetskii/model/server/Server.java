@@ -72,9 +72,9 @@ public class Server {
     private void addMessageToHistory(Event event) {
         synchronized (database) {
             if (event.getEvent().equals("userlogin") || event.getEvent().equals("userlogout")) {
-                database.AddMessage(event.getUserName(), event.getMessage());
+                database.AddMessage(event.getEvent(), event.getUserName(), event.getMessage());
             } else if (event.getEvent().equals("message")) {
-                database.AddMessage(event.getFrom(), event.getMessage());
+                database.AddMessage(event.getEvent(), event.getFrom(), event.getMessage());
             }
         }
     }
@@ -91,5 +91,9 @@ public class Server {
 
     public Set<String> getActiveUsers() {
         return activeUsers;
+    }
+
+    public Database getDatabase() {
+        return database;
     }
 }
