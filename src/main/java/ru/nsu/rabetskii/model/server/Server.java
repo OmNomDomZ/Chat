@@ -9,41 +9,27 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.SQLException;
 import java.util.*;
 
 public class Server {
-    public static LinkedList<ClientConnection> serverList = new LinkedList<>();
-    public static Map<String, String> userPasswords = new HashMap<>();
-    public static Set<String> activeUsers = new HashSet<>();
-    public static boolean log;
-    public static final Database database = new Database();
+    private final LinkedList<ClientConnection> serverList = new LinkedList<>();
+    private final Map<String, String> userPasswords = new HashMap<>();
+    private final Set<String> activeUsers = new HashSet<>();
+    private boolean log;
+    private final Database database = new Database();
 
-    public static void main(String[] args) {
-        if (args.length < 1) {
-            System.err.println("Usage: java Server <port>");
-            System.exit(1);
-        }
-
-        int port;
-        try {
-            port = Integer.parseInt(args[0]);
-        } catch (NumberFormatException e) {
-            System.err.println("Invalid port number.");
-            System.exit(1);
-            return;
-        }
+    public void startServer(int port) {
 
         try (ServerSocket server = new ServerSocket(port)) {
             Properties properties = new Properties();
             properties.load(Server.class.getResourceAsStream("/config.properties"));
             log = Boolean.parseBoolean(properties.getProperty("log"));
             log("Server Started on port " + port);
+            database.Connect();
             while (true) {
                 try {
-                    database.Connect();
                     Socket socket = server.accept();
-                    ClientConnection clientConnection = new ClientConnection(socket);
+                    ClientConnection clientConnection = new ClientConnection(socket, this);
                     serverList.add(clientConnection);
                 } catch (IOException e) {
                     log("Error accepting client connection: " + e.getMessage());
@@ -54,7 +40,7 @@ public class Server {
         }
     }
 
-    public static String hashPassword(String password) {
+    public String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(password.getBytes());
@@ -68,7 +54,7 @@ public class Server {
         }
     }
 
-    public static void broadcastMessage(Event event){
+    public void broadcastMessage(Event event){
         List<ClientConnection> toRemove = new ArrayList<>();
         for (ClientConnection client : serverList) {
             try {
@@ -83,22 +69,27 @@ public class Server {
         addMessageToHistory(event);
     }
 
-    private static void addMessageToHistory(Event event) {
-//        synchronized (messageHistory) {
-//            if (messageHistory.size() >= 10) {
-//                messageHistory.removeFirst();
-//            }
-//            messageHistory.add(event);
-//        }
+    private void addMessageToHistory(Event event) {
         synchronized (database) {
-            database.AddMessage(event.getUserName(), event.getMessage());
+            if (event.getEvent().equals("userlogin") || event.getEvent().equals("userlogout")) {
+                database.AddMessage(event.getUserName(), event.getMessage());
+            } else if (event.getEvent().equals("message")) {
+                database.AddMessage(event.getFrom(), event.getMessage());
+            }
         }
     }
 
-    public static void log(String message) {
+    public void log(String message) {
         if (log) {
             System.out.println(message);
         }
     }
 
+    public Map<String, String> getUserPasswords() {
+        return userPasswords;
+    }
+
+    public Set<String> getActiveUsers() {
+        return activeUsers;
+    }
 }

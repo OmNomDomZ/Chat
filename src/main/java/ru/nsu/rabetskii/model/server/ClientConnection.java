@@ -1,6 +1,5 @@
 package ru.nsu.rabetskii.model.server;
 
-import ru.nsu.rabetskii.database.Database;
 import ru.nsu.rabetskii.model.XmlUtility;
 import ru.nsu.rabetskii.model.xmlmessage.Command;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
@@ -15,13 +14,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class ClientConnection extends Thread {
-    private Socket socket;
-    private DataInputStream in;
-    private DataOutputStream out;
-    private XmlUtility xmlUtility;
+    private final Server server;
+    private final Socket socket;
+    private final DataInputStream in;
+    private final DataOutputStream out;
+    private final XmlUtility xmlUtility;
     private String userName;
 
-    public ClientConnection(Socket socket) throws IOException {
+    public ClientConnection(Socket socket, Server server) throws IOException {
+        this.server = server;
         this.socket = socket;
         in = new DataInputStream(socket.getInputStream());
         out = new DataOutputStream(socket.getOutputStream());
@@ -39,8 +40,9 @@ public class ClientConnection extends Thread {
             sendErrorMessage("No message content");
             return;
         }
-        Server.broadcastMessage(new Event("message", userName, message));
-        Server.log(userName + ": " + message);
+
+        server.broadcastMessage(new Event("message", userName, message));
+        server.log(userName + ": " + message);
     }
 
     @Override
@@ -74,7 +76,7 @@ public class ClientConnection extends Thread {
                         break;
                     case "logout":
                         if (userName != null) {
-                            handleLogout(command);
+                            handleLogout();
                         } else {
                             sendErrorMessage("Not logged in");
                         }
@@ -84,15 +86,15 @@ public class ClientConnection extends Thread {
                 }
             }
         } catch (EOFException e) {
-            Server.log("Client disconnected");
+            server.log("Client disconnected");
         } catch (IOException | JAXBException e) {
-            Server.log("Error handling client connection: " + e.getMessage());
+            server.log("Error handling client connection: " + e.getMessage());
         } finally {
             try {
                 handleClientDisconnect();
                 socket.close();
             } catch (IOException | JAXBException e) {
-                Server.log("Error closing client connection: " + e.getMessage());
+                server.log("Error closing client connection: " + e.getMessage());
             }
         }
     }
@@ -105,22 +107,22 @@ public class ClientConnection extends Thread {
             return;
         }
 
-        String hashedPassword = Server.hashPassword(password);
+        String hashedPassword = server.hashPassword(password);
 
-        if (!Server.userPasswords.containsKey(userName)) {
-            Server.userPasswords.put(userName, hashedPassword);
-            Server.activeUsers.add(userName);
+        if (!server.getUserPasswords().containsKey(userName)) {
+            server.getUserPasswords().put(userName, hashedPassword);
+            server.getActiveUsers().add(userName);
             this.userName = userName;
             sendSuccessMessage();
-            Server.broadcastMessage(new Event("userlogin", userName));
-            Server.log(userName + " joined the chat");
+            server.broadcastMessage(new Event("userlogin", userName));
+            server.log(userName + " joined the chat");
 //            sendHistoryMessages();
-        } else if (Server.userPasswords.get(userName).equals(hashedPassword)) {
-            Server.activeUsers.add(userName);
+        } else if (server.getUserPasswords().get(userName).equals(hashedPassword)) {
+            server.getActiveUsers().add(userName);
             this.userName = userName;
             sendSuccessMessage();
-            Server.broadcastMessage(new Event("userlogin", userName));
-            Server.log(userName + " joined the chat");
+            server.broadcastMessage(new Event("userlogin", userName));
+            server.log(userName + " joined the chat");
 //            sendHistoryMessages();
         } else {
             sendErrorMessage("Incorrect password");
@@ -146,17 +148,17 @@ public class ClientConnection extends Thread {
 //        }
 //    }
 
-    private void handleLogout(Command command) throws IOException, JAXBException {
+    private void handleLogout() throws IOException, JAXBException {
         handleClientDisconnect();
         sendSuccessMessage();
     }
 
     private void handleClientDisconnect() throws IOException, JAXBException {
         if (userName != null) {
-            Server.activeUsers.remove(userName);
+            server.getActiveUsers().remove(userName);
             Event logoutEvent = new Event("userlogout", userName);
-            Server.broadcastMessage(logoutEvent);
-            Server.log(userName + " left the chat"); // Логирование отключения
+            server.broadcastMessage(logoutEvent);
+            server.log(userName + " left the chat");
             userName = null;
         }
     }
@@ -174,7 +176,7 @@ public class ClientConnection extends Thread {
     }
 
     private void handleList() throws JAXBException, IOException {
-        List<Success.User> users = Server.activeUsers.stream()
+        List<Success.User> users = server.getActiveUsers().stream()
                 .map(name -> {
                     Success.User user = new Success.User();
                     user.setName(name);
