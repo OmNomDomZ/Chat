@@ -1,5 +1,6 @@
 package ru.nsu.rabetskii.model.server;
 
+import ru.nsu.rabetskii.database.Database;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
 
 import javax.xml.bind.JAXBException;
@@ -8,15 +9,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.*;
 
 public class Server {
-
     public static LinkedList<ClientConnection> serverList = new LinkedList<>();
     public static Map<String, String> userPasswords = new HashMap<>();
     public static Set<String> activeUsers = new HashSet<>();
-    public static List<Event> messageHistory = new LinkedList<>();
     public static boolean log;
+    public static final Database database = new Database();
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -40,6 +41,7 @@ public class Server {
             log("Server Started on port " + port);
             while (true) {
                 try {
+                    database.Connect();
                     Socket socket = server.accept();
                     ClientConnection clientConnection = new ClientConnection(socket);
                     serverList.add(clientConnection);
@@ -66,7 +68,7 @@ public class Server {
         }
     }
 
-    public static void broadcastMessage(Event event) throws IOException, JAXBException {
+    public static void broadcastMessage(Event event){
         List<ClientConnection> toRemove = new ArrayList<>();
         for (ClientConnection client : serverList) {
             try {
@@ -82,11 +84,14 @@ public class Server {
     }
 
     private static void addMessageToHistory(Event event) {
-        synchronized (messageHistory) {
-            if (messageHistory.size() >= 10) {
-                messageHistory.remove(0);
-            }
-            messageHistory.add(event);
+//        synchronized (messageHistory) {
+//            if (messageHistory.size() >= 10) {
+//                messageHistory.removeFirst();
+//            }
+//            messageHistory.add(event);
+//        }
+        synchronized (database) {
+            database.AddMessage(event.getUserName(), event.getMessage());
         }
     }
 
@@ -95,4 +100,5 @@ public class Server {
             System.out.println(message);
         }
     }
+
 }

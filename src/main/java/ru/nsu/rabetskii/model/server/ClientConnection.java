@@ -1,5 +1,6 @@
 package ru.nsu.rabetskii.model.server;
 
+import ru.nsu.rabetskii.database.Database;
 import ru.nsu.rabetskii.model.XmlUtility;
 import ru.nsu.rabetskii.model.xmlmessage.Command;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
@@ -39,7 +40,7 @@ public class ClientConnection extends Thread {
             return;
         }
         Server.broadcastMessage(new Event("message", userName, message));
-        Server.log(userName + ": " + message); // Логирование отправленного сообщения
+        Server.log(userName + ": " + message);
     }
 
     @Override
@@ -113,30 +114,37 @@ public class ClientConnection extends Thread {
             sendSuccessMessage();
             Server.broadcastMessage(new Event("userlogin", userName));
             Server.log(userName + " joined the chat");
-            sendHistoryMessages();
+//            sendHistoryMessages();
         } else if (Server.userPasswords.get(userName).equals(hashedPassword)) {
             Server.activeUsers.add(userName);
             this.userName = userName;
             sendSuccessMessage();
             Server.broadcastMessage(new Event("userlogin", userName));
             Server.log(userName + " joined the chat");
-            sendHistoryMessages();
+//            sendHistoryMessages();
         } else {
             sendErrorMessage("Incorrect password");
             socket.close();
         }
     }
 
-    private void sendHistoryMessages() throws IOException, JAXBException {
-        synchronized (Server.messageHistory) {
-            for (Event event : Server.messageHistory) {
-                if ("userlogin".equals(event.getEvent()) && event.getUserName().equals(this.userName)) {
-                    continue;
-                }
-                sendMessage(event);
-            }
-        }
-    }
+//    private void sendHistoryMessages() throws IOException, JAXBException {
+//        Database database = Server.database;
+//        synchronized (database) {
+//            for (String string: database.getRecentMessages()) {
+//                String[] parts = string.split(" ", 2);
+//                String username = parts[0];
+//                String message = parts[1];
+//
+//                Event event = new Event("message", username, message);
+//
+//                if ("userlogin".equals(event.getEvent()) && event.getUserName().equals(this.userName)) {
+//                    continue;
+//                }
+//                sendMessage(event);
+//            }
+//        }
+//    }
 
     private void handleLogout(Command command) throws IOException, JAXBException {
         handleClientDisconnect();
