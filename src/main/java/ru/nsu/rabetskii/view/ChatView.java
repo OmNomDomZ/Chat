@@ -5,13 +5,14 @@ import ru.nsu.rabetskii.patternobserver.Observer;
 import ru.nsu.rabetskii.model.client.ClientHandler;
 
 import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 public class ChatView implements Observer {
     private JFrame frame;
-    private JTextArea textArea;
+    private JTextPane textPane;
     private JTextField textField;
     private final String nickname;
     private final ClientHandler clientHandler;
@@ -29,13 +30,12 @@ public class ChatView implements Observer {
         frame.setSize(600, 400);
         frame.setLocationRelativeTo(null);
 
-        textArea = new JTextArea();
-        textArea.setEditable(false);
-        textArea.setBackground(new Color(60, 60, 60));
-        textArea.setForeground(Color.WHITE);
-        textArea.setCaretColor(Color.WHITE);
-        textArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        textPane = new JTextPane();
+        textPane.setEditable(false);
+        textPane.setBackground(new Color(60, 60, 60));
+        textPane.setForeground(Color.WHITE);
+        textPane.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        JScrollPane scrollPane = new JScrollPane(textPane);
 
         textField = new JTextField(25);
         textField.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
@@ -79,7 +79,7 @@ public class ChatView implements Observer {
 
         textField.addActionListener(e -> sendMessage());
 
-        listButton.addActionListener(e -> requestUserList());
+        listButton.addActionListener(e -> showUserList());
 
         frame.addWindowListener(new WindowAdapter() {
             @Override
@@ -97,8 +97,28 @@ public class ChatView implements Observer {
         }
     }
 
-    private void requestUserList() {
-        clientHandler.requestUserList();
+    private void showUserList() {
+        String[] users = clientHandler.requestUserList();
+        if (users != null && users.length > 0) {
+            appendStyledText("\n=== User List ===\n", Color.CYAN);
+            for (String user : users) {
+                appendStyledText("| " + user + "\n", new Color(4, 174, 4));
+            }
+            appendStyledText("=================\n", Color.CYAN);
+        } else {
+            appendStyledText("\n[INFO]: No users found or failed to retrieve user list.\n", Color.RED);
+        }
+    }
+
+    private void appendStyledText(String text, Color color) {
+        StyledDocument doc = textPane.getStyledDocument();
+        Style style = textPane.addStyle("Style", null);
+        StyleConstants.setForeground(style, color);
+        try {
+            doc.insertString(doc.getLength(), text, style);
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        }
     }
 
     private void handleLogout() {
@@ -113,11 +133,6 @@ public class ChatView implements Observer {
 
     @Override
     public void update(String message) {
-        textArea.append(message + "\n");
-        scrollToBottom();
-    }
-
-    private void scrollToBottom() {
-        textArea.setCaretPosition(textArea.getDocument().getLength());
+        appendStyledText(message + "\n", Color.WHITE);
     }
 }

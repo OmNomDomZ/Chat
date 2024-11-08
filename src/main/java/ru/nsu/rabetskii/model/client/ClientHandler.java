@@ -20,6 +20,8 @@ public class ClientHandler {
     private boolean isLoggedIn = false;
     private final XmlUtility xmlUtility;
     private final ChatObservable chatObservable;
+    private volatile String[] userList = null;
+
 
     public ClientHandler(String addr, int port, ChatObservable chatObservable, String nickname, String password) throws IOException, JAXBException {
         this.socket = new Socket(addr, port);
@@ -113,13 +115,24 @@ public class ClientHandler {
         }
     }
 
-    public void requestUserList() {
+    public synchronized String[] requestUserList() {
+        userList = null;
         try {
             Command listCommand = new Command("list", nickname);
             sendXmlMessage(listCommand);
-        } catch (IOException | JAXBException e) {
+
+            long startTime = System.currentTimeMillis();
+            while (userList == null) {
+                if (System.currentTimeMillis() - startTime > 5000) {
+                    chatObservable.sendMessage("Timed out while waiting for user list response.");
+                    return null;
+                }
+                Thread.sleep(100); // Ожидание с небольшими интервалами
+            }
+        } catch (IOException | JAXBException | InterruptedException e) {
             chatObservable.sendMessage("Failed to request user list: " + e.getMessage());
         }
+        return userList;
     }
 
     private void downService() {
@@ -139,9 +152,7 @@ public class ClientHandler {
         public void run() {
             try {
                 while (!socket.isClosed()) {
-                    int length;
-                    length = in.readInt();
-
+                    int length = in.readInt();
                     if (length <= 0) continue;
                     byte[] buffer = new byte[length];
                     in.readFully(buffer);
@@ -175,11 +186,10 @@ public class ClientHandler {
 
         private void handleSuccess(Success success) {
             if (success.getUsers() != null) {
-                StringBuilder userListMessage = new StringBuilder("User list:\n");
-                for (Success.User user : success.getUsers().getUsers()) {
-                    userListMessage.append(user.getName()).append("\n");
-                }
-                chatObservable.sendMessage(userListMessage.toString());
+                userList = success.getUsers().getUsers().stream()
+                        .map(Success.User::getName)
+                        .toArray(String[]::new);
+                chatObservable.sendMessage("\nUser list updated.");
             }
         }
     }
