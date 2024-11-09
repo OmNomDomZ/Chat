@@ -25,7 +25,7 @@ public class Server {
             properties.load(Server.class.getResourceAsStream("/config.properties"));
             log = Boolean.parseBoolean(properties.getProperty("log"));
             log("Server Started on port " + port);
-            database.Connect();
+            database.Connect(log);
             while (true) {
                 try {
                     Socket socket = server.accept();
@@ -58,7 +58,7 @@ public class Server {
         List<ClientConnection> toRemove = new ArrayList<>();
         for (ClientConnection client : serverList) {
             try {
-                client.sendMessage(event);
+                client.sendMessageFromServer(event);
             } catch (IOException e) {
                 toRemove.add(client);
             } catch (JAXBException e) {

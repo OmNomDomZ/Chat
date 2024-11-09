@@ -127,7 +127,7 @@ public class ClientHandler {
                     chatObservable.sendMessage("Timed out while waiting for user list response.");
                     return null;
                 }
-                Thread.sleep(100); // Ожидание с небольшими интервалами
+                Thread.sleep(100);
             }
         } catch (IOException | JAXBException | InterruptedException e) {
             chatObservable.sendMessage("Failed to request user list: " + e.getMessage());
@@ -170,7 +170,7 @@ public class ClientHandler {
                     }
                 }
             } catch (IOException | JAXBException e) {
-                ClientHandler.this.downService();
+                downService();
             }
         }
 

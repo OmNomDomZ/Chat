@@ -6,18 +6,22 @@ import java.util.List;
 
 
 public class Database {
-    private static final String URL = "jdbc:postgresql://localhost:5432/chat_db";
-    private static final String USER = "chat_user";
-    private static final String PASSWORD = "chat_password";
+    private final String URL = "jdbc:postgresql://localhost:5432/chat_db";
+    private final String USER = "chat_user";
+    private final String PASSWORD = "chat_password";
     private Connection connection;
+    private boolean log;
 
-    public void Connect() {
+    public void Connect(boolean log) {
         try{
+            this.log = log;
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
             String sql = "TRUNCATE TABLE chat_messages RESTART IDENTITY;";
             PreparedStatement preparedStatement = connection.prepareStatement(sql);
             preparedStatement.execute();
-            System.out.println("Connection to database established.");
+            if (log){
+                System.out.println("Connection to database established.");
+            }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to connect to the database: " + e.getMessage(), e);
         }
@@ -30,7 +34,9 @@ public class Database {
             preparedStatement.setString(2, username);
             preparedStatement.setString(3, message);
             preparedStatement.executeUpdate();
-            System.out.println("Message successfully added to the database.");
+            if (log){
+                System.out.println("Message successfully added to the database.");
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -65,7 +71,9 @@ public class Database {
         if (connection != null) {
             try {
                 connection.close();
-                System.out.println("Connection to database closed.");
+                if (log){
+                    System.out.println("Connection to database closed.");
+                }
             } catch (SQLException e) {
                 System.err.println("Error closing the database connection: " + e.getMessage());
             }

@@ -151,7 +151,7 @@ public class ClientConnection extends Thread {
                 if ("userlogin".equals(event.getEvent()) && event.getUserName().equals(this.userName)) {
                     continue;
                 }
-                sendMessage(event);
+                sendMessageFromServer(event);
             }
         }
     }
@@ -174,13 +174,13 @@ public class ClientConnection extends Thread {
     private void sendSuccessMessage() throws JAXBException, IOException {
         Success success = new Success();
         String xmlMessage = xmlUtility.marshalToXml(success);
-        sendMessage(xmlMessage);
+        sendMessageFromServer(xmlMessage);
     }
 
     private void sendErrorMessage(String errorMessage) throws JAXBException, IOException {
         Error error = new Error(errorMessage);
         String xmlMessage = xmlUtility.marshalToXml(error);
-        sendMessage(xmlMessage);
+        sendMessageFromServer(xmlMessage);
     }
 
     private void handleList() throws JAXBException, IOException {
@@ -201,18 +201,18 @@ public class ClientConnection extends Thread {
 
     private void sendSuccessMessage(Success success) throws JAXBException, IOException {
         String xmlMessage = xmlUtility.marshalToXml(success);
-        sendMessage(xmlMessage);
+        sendMessageFromServer(xmlMessage);
     }
 
-    private void sendMessage(String xmlMessage) throws IOException {
+    private void sendMessageFromServer(String xmlMessage) throws IOException {
         byte[] messageBytes = xmlMessage.getBytes(StandardCharsets.UTF_8);
         out.writeInt(messageBytes.length);
         out.write(messageBytes);
         out.flush();
     }
 
-    public void sendMessage(Event event) throws JAXBException, IOException {
+    public void sendMessageFromServer(Event event) throws JAXBException, IOException {
         String xmlMessage = xmlUtility.marshalToXml(event);
-        sendMessage(xmlMessage);
+        sendMessageFromServer(xmlMessage);
     }
 }
