@@ -2,10 +2,12 @@ package ru.nsu.rabetskii.model.server;
 
 import ru.nsu.rabetskii.database.Database;
 import ru.nsu.rabetskii.model.XmlUtility;
-import ru.nsu.rabetskii.model.xmlmessage.Command;
+import ru.nsu.rabetskii.model.xmlmessage.command.Command;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
 import ru.nsu.rabetskii.model.xmlmessage.Success;
 import ru.nsu.rabetskii.model.xmlmessage.Error;
+import ru.nsu.rabetskii.model.xmlmessage.command.CommandLogin;
+import ru.nsu.rabetskii.model.xmlmessage.command.CommandMessage;
 
 import java.io.*;
 import java.net.Socket;
@@ -35,7 +37,7 @@ public class ClientConnection extends Thread {
         start();
     }
 
-    private void handleMessage(Command command) throws IOException, JAXBException {
+    private void handleMessage(CommandMessage command) throws IOException, JAXBException {
         String message = command.getMessage();
         if (message == null) {
             sendErrorMessage("No message content");
@@ -59,11 +61,11 @@ public class ClientConnection extends Thread {
 
                 switch (command.getCommand()) {
                     case "login":
-                        handleLogin(command);
+                        handleLogin((CommandLogin) command);
                         break;
                     case "message":
                         if (userName != null) {
-                            handleMessage(command);
+                            handleMessage((CommandMessage) command);
                         } else {
                             sendErrorMessage("Not logged in");
                         }
@@ -100,7 +102,7 @@ public class ClientConnection extends Thread {
         }
     }
 
-    private void handleLogin(Command command) throws IOException, JAXBException {
+    private void handleLogin(CommandLogin command) throws IOException, JAXBException {
         String userName = command.getUserName();
         String password = command.getPassword();
         if (userName == null || password == null) {

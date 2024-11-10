@@ -2,7 +2,7 @@ package ru.nsu.rabetskii.model.client;
 
 import ru.nsu.rabetskii.model.ChatObservable;
 import ru.nsu.rabetskii.model.XmlUtility;
-import ru.nsu.rabetskii.model.xmlmessage.Command;
+import ru.nsu.rabetskii.model.xmlmessage.command.*;
 import ru.nsu.rabetskii.model.xmlmessage.Event;
 import ru.nsu.rabetskii.model.xmlmessage.Success;
 import ru.nsu.rabetskii.model.xmlmessage.Error;
@@ -45,7 +45,7 @@ public class ClientHandler {
 
     private void promptLogin(String nickname, String password) {
         try {
-            Command loginCommand = new Command("login", nickname, password);
+            Command loginCommand = new CommandLogin(nickname, password);
             sendXmlMessage(loginCommand);
 
             int length = in.readInt();
@@ -62,7 +62,7 @@ public class ClientHandler {
                 chatObservable.sendMessage("Login successful!");
             } else if (xmlMessage.contains("error")) {
                 Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                chatObservable.sendMessage("Login failed: " + error.getMessage());
+                chatObservable.sendMessage("Login failed: " + error.getReason());
                 isLoggedIn = false;
             }
         } catch (IOException | JAXBException e) {
@@ -81,7 +81,7 @@ public class ClientHandler {
 
     public void sendMessage(String message) {
         try {
-            Command messageCommand = new Command("message", nickname, message);
+            Command messageCommand = new CommandMessage(message);
             sendXmlMessage(messageCommand);
         } catch (IOException | JAXBException e) {
             chatObservable.sendMessage("Failed to send message: " + e.getMessage());
@@ -90,7 +90,7 @@ public class ClientHandler {
 
     public void logout() {
         try {
-            Command logoutCommand = new Command("logout", nickname);
+            Command logoutCommand = new CommandLogout();
             sendXmlMessage(logoutCommand);
 
             int length = in.readInt();
@@ -106,7 +106,7 @@ public class ClientHandler {
                 chatObservable.sendMessage("Logout successful!");
             } else if (xmlMessage.contains("error")) {
                 Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                chatObservable.sendMessage("Logout failed: " + error.getMessage());
+                chatObservable.sendMessage("Logout failed: " + error.getReason());
             }
         } catch (IOException | JAXBException e) {
             chatObservable.sendMessage("Failed to logout: " + e.getMessage());
@@ -118,7 +118,7 @@ public class ClientHandler {
     public synchronized String[] requestUserList() {
         userList = null;
         try {
-            Command listCommand = new Command("list", nickname);
+            Command listCommand = new CommandList();
             sendXmlMessage(listCommand);
 
             long startTime = System.currentTimeMillis();
@@ -166,7 +166,7 @@ public class ClientHandler {
                         handleSuccess(success);
                     } else if (xmlMessage.contains("error")) {
                         Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                        chatObservable.sendMessage("Error: " + error.getMessage());
+                        chatObservable.sendMessage("Error: " + error.getReason());
                     }
                 }
             } catch (IOException | JAXBException e) {
