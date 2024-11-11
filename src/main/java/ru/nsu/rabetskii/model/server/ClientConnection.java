@@ -2,12 +2,13 @@ package ru.nsu.rabetskii.model.server;
 
 import ru.nsu.rabetskii.database.Database;
 import ru.nsu.rabetskii.model.XmlUtility;
-import ru.nsu.rabetskii.model.xmlmessage.command.Command;
-import ru.nsu.rabetskii.model.xmlmessage.Event;
+import ru.nsu.rabetskii.model.xmlmessage.command.*;
+import ru.nsu.rabetskii.model.xmlmessage.event.Event;
 import ru.nsu.rabetskii.model.xmlmessage.Success;
 import ru.nsu.rabetskii.model.xmlmessage.Error;
-import ru.nsu.rabetskii.model.xmlmessage.command.CommandLogin;
-import ru.nsu.rabetskii.model.xmlmessage.command.CommandMessage;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogin;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogout;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventMessage;
 
 import java.io.*;
 import java.net.Socket;
@@ -44,7 +45,7 @@ public class ClientConnection extends Thread {
             return;
         }
 
-        server.broadcastMessage(new Event("message", userName, message));
+        server.broadcastMessage(new EventMessage(userName, message));
         server.log(userName + ": " + message);
     }
 
@@ -57,35 +58,33 @@ public class ClientConnection extends Thread {
                 byte[] buffer = new byte[length];
                 in.readFully(buffer);
                 String xmlMessage = new String(buffer, StandardCharsets.UTF_8);
-                Command command = xmlUtility.unmarshalFromString(xmlMessage, Command.class);
 
-                switch (command.getCommand()) {
-                    case "login":
-                        handleLogin((CommandLogin) command);
-                        break;
-                    case "message":
+                Object obj = xmlUtility.unmarshalFromString(xmlMessage, Object.class);
+
+                switch (obj) {
+                    case CommandLogin commandLogin -> handleLogin(commandLogin);
+                    case CommandMessage commandMessage -> {
                         if (userName != null) {
-                            handleMessage((CommandMessage) command);
+                            handleMessage(commandMessage);
                         } else {
                             sendErrorMessage("Not logged in");
                         }
-                        break;
-                    case "list":
+                    }
+                    case CommandList commandList -> {
                         if (userName != null) {
                             handleList();
                         } else {
                             sendErrorMessage("Not logged in");
                         }
-                        break;
-                    case "logout":
+                    }
+                    case CommandLogout commandLogout -> {
                         if (userName != null) {
                             handleLogout();
                         } else {
                             sendErrorMessage("Not logged in");
                         }
-                        break;
-                    default:
-                        sendErrorMessage("Unknown command: " + command.getCommand());
+                    }
+                    case null, default -> sendErrorMessage("Unknown command");
                 }
             }
         } catch (EOFException e) {
@@ -117,14 +116,14 @@ public class ClientConnection extends Thread {
             server.getActiveUsers().add(userName);
             this.userName = userName;
             sendSuccessMessage();
-            server.broadcastMessage(new Event("userlogin", userName));
+            server.broadcastMessage(new EventLogin(userName));
             server.log(userName + " joined the chat");
             sendHistoryMessages();
         } else if (server.getUserPasswords().get(userName).equals(hashedPassword)) {
             server.getActiveUsers().add(userName);
             this.userName = userName;
             sendSuccessMessage();
-            server.broadcastMessage(new Event("userlogin", userName));
+            server.broadcastMessage(new EventLogin(userName));
             server.log(userName + " joined the chat");
             sendHistoryMessages();
         } else {
@@ -136,21 +135,23 @@ public class ClientConnection extends Thread {
     private void sendHistoryMessages() throws IOException, JAXBException {
         Database database = server.getDatabase();
         synchronized (database) {
-            for (String string: database.getRecentMessages()) {
+            for (String string : database.getRecentMessages()) {
                 String[] parts = string.split(" ", 3);
                 String event_name = parts[0];
                 String username = parts[1];
                 String message = parts[2];
 
                 Event event = null;
-                if (event_name.equals("message")){
-                    event = new Event(event_name, username, message);
-                } else if (event_name.equals("userlogin") || event_name.equals("userlogout") ) {
-                    event = new Event(event_name, username);
+                if (event_name.equals("message")) {
+                    event = new EventMessage(username, message);
+                } else if (event_name.equals("userlogin")) {
+                    event = new EventLogin(username);
+                } else if (event_name.equals("userlogout")) {
+                    event = new EventLogout(username);
                 }
 
                 assert event != null;
-                if ("userlogin".equals(event.getEvent()) && event.getUserName().equals(this.userName)) {
+                if (event instanceof EventLogin eventLogin && eventLogin.getUserName().equals(username)) {
                     continue;
                 }
                 sendMessageFromServer(event);
@@ -166,7 +167,7 @@ public class ClientConnection extends Thread {
     private void handleClientDisconnect() throws IOException, JAXBException {
         if (userName != null) {
             server.getActiveUsers().remove(userName);
-            Event logoutEvent = new Event("userlogout", userName);
+            EventLogout logoutEvent = new EventLogout(userName);
             server.broadcastMessage(logoutEvent);
             server.log(userName + " left the chat");
             userName = null;

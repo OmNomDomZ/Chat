@@ -3,7 +3,7 @@ package ru.nsu.rabetskii.model.xmlmessage.command;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
-@XmlRootElement(name = "message")
+@XmlRootElement(name = "CommandMessage")
 public class CommandMessage extends Command {
     private String message;
 

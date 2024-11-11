@@ -3,9 +3,12 @@ package ru.nsu.rabetskii.model.client;
 import ru.nsu.rabetskii.model.ChatObservable;
 import ru.nsu.rabetskii.model.XmlUtility;
 import ru.nsu.rabetskii.model.xmlmessage.command.*;
-import ru.nsu.rabetskii.model.xmlmessage.Event;
+import ru.nsu.rabetskii.model.xmlmessage.event.Event;
 import ru.nsu.rabetskii.model.xmlmessage.Success;
 import ru.nsu.rabetskii.model.xmlmessage.Error;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogin;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogout;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventMessage;
 
 import javax.xml.bind.JAXBException;
 import java.io.*;
@@ -158,15 +161,15 @@ public class ClientHandler {
                     in.readFully(buffer);
                     String xmlMessage = new String(buffer, StandardCharsets.UTF_8);
 
-                    if (xmlMessage.contains("event")) {
-                        Event event = xmlUtility.unmarshalFromString(xmlMessage, Event.class);
-                        handleEvent(event);
-                    } else if (xmlMessage.contains("success")) {
-                        Success success = xmlUtility.unmarshalFromString(xmlMessage, Success.class);
-                        handleSuccess(success);
-                    } else if (xmlMessage.contains("error")) {
-                        Error error = xmlUtility.unmarshalFromString(xmlMessage, Error.class);
-                        chatObservable.sendMessage("Error: " + error.getReason());
+                    Object obj = xmlUtility.unmarshalFromString(xmlMessage, Object.class);
+
+                    switch (obj) {
+                        case EventLogin eventLogin -> handleLogin(eventLogin);
+                        case EventLogout eventLogout -> handleLogout(eventLogout);
+                        case EventMessage eventMessage -> handleMessage(eventMessage);
+                        case Success success -> handleSuccess(success);
+                        case Error error -> chatObservable.sendMessage("Error: " + error.getReason());
+                        case null, default -> System.err.println("Unknown message type received.");
                     }
                 }
             } catch (IOException | JAXBException e) {
@@ -174,14 +177,16 @@ public class ClientHandler {
             }
         }
 
-        private void handleEvent(Event event) {
-            if ("userlogin".equals(event.getEvent())) {
-                chatObservable.sendMessage(event.getUserName() + " joined the chat");
-            } else if ("userlogout".equals(event.getEvent()) && !event.getUserName().equals(nickname)) {
-                chatObservable.sendMessage(event.getUserName() + " left the chat");
-            } else if ("message".equals(event.getEvent())) {
-                chatObservable.sendMessage(event.getFrom() + ": " + event.getMessage());
-            }
+        private void handleLogin(EventLogin eventLogin) {
+            chatObservable.sendMessage(eventLogin.getUserName() + " joined the chat");
+        }
+
+        private void handleLogout(EventLogout eventLogout){
+            chatObservable.sendMessage(eventLogout.getUserName() + " left the chat");
+        }
+
+        private void handleMessage(EventMessage eventMessage) {
+            chatObservable.sendMessage(eventMessage.getFrom() + ": " + eventMessage.getMessage());
         }
 
         private void handleSuccess(Success success) {

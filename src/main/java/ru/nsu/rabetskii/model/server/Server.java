@@ -1,7 +1,10 @@
 package ru.nsu.rabetskii.model.server;
 
 import ru.nsu.rabetskii.database.Database;
-import ru.nsu.rabetskii.model.xmlmessage.Event;
+import ru.nsu.rabetskii.model.xmlmessage.event.Event;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogin;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventLogout;
+import ru.nsu.rabetskii.model.xmlmessage.event.EventMessage;
 
 import javax.xml.bind.JAXBException;
 import java.io.*;
@@ -71,10 +74,20 @@ public class Server {
 
     private void addMessageToHistory(Event event) {
         synchronized (database) {
-            if (event.getEvent().equals("userlogin") || event.getEvent().equals("userlogout")) {
-                database.AddMessage(event.getEvent(), event.getUserName(), event.getMessage());
-            } else if (event.getEvent().equals("message")) {
-                database.AddMessage(event.getEvent(), event.getFrom(), event.getMessage());
+            String e = event.getEvent();
+            switch (event.getEvent()) {
+                case "userlogin" -> {
+                    EventLogin eventLogin = (EventLogin) event;
+                    database.AddMessage(eventLogin.getEvent(), eventLogin.getUserName(), null);
+                }
+                case "userlogout" -> {
+                    EventLogout eventLogout = (EventLogout) event;
+                    database.AddMessage(eventLogout.getEvent(), eventLogout.getUserName(), null);
+                }
+                case "message" -> {
+                    EventMessage eventMessage = (EventMessage) event;
+                    database.AddMessage(eventMessage.getEvent(), eventMessage.getFrom(), eventMessage.getMessage());
+                }
             }
         }
     }
